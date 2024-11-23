@@ -120,7 +120,7 @@
 }
 
 #audio-container {
-  margin-top: 1rem;
+  margin-top: 0.5rem;
 }
 
 #audio-container audio {
@@ -371,4 +371,54 @@ body {
 
 .audio-button svg {
   font-size: 20px;
+}
+
+.sessions-table {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.sessions-table table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.sessions-table th,
+.sessions-table td {
+  padding: 12px;
+  text-align: left;
+  border-bottom: 1px solid #eee;
+}
+
+.sessions-table th {
+  background-color: #f8f9fa;
+  position: sticky;
+  top: 0;
+}
+
+.session-row {
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.session-row:hover {
+  background-color: #f8f9fa;
+}
+
+.icon-button {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: #666;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s;
+}
+
+.icon-button:hover {
+  background: rgba(0, 0, 0, 0.05);
 }

@@ -19,6 +19,7 @@
   width: 90%;
   max-height: 90vh;
   overflow-y: auto;
+  color: #1f2937;
 }
 
 .modal-close {
@@ -31,9 +32,10 @@
   cursor: pointer;
   padding: 0.5rem;
   line-height: 1;
+  color: #1f2937;
 }
 
 .modal-content h2 {
   margin-top: 0;
-  color: #136F63;
+  color: #1f2937;
 }

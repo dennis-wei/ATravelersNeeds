@@ -4,10 +4,14 @@ import './App.css'
 import { useFirebaseAuth } from './hooks/useFirebaseAuth';
 import { Login } from './components/Login';
 import { auth } from '../firebase';
-import { Modal } from './components/InfoModal';
+import { InfoModal } from './components/InfoModal';
+import CheckIcon from '@mui/icons-material/Check';
 import InfoIcon from '@mui/icons-material/Info';
 import VolumeUpIcon from '@mui/icons-material/VolumeUp';
 import SaveIcon from '@mui/icons-material/Save';
+import { SessionsModal } from './components/SessionsModal';
+import HistoryIcon from '@mui/icons-material/History';
+import { Session } from './types/session';
 
 type Language = 'french' | 'italian'
 
@@ -18,11 +22,14 @@ export default function App() {
   const [selectedLanguage, setSelectedLanguage] = useState<Language>('french')
   const [translation, setTranslation] = useState<string>('')
   const [summary, setSummary] = useState<string>('')
-  const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+  const [isInfoModalOpen, setIsInfoModalOpen] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [translatedAudioData, setTranslatedAudioData] = useState<string>('');
   const [userRecordedAudioData, setUserRecordedAudioData] = useState<string>('');
+  const [sessions, setSessions] = useState<Session[]>([]);
+  const [isSessionsModalOpen, setIsSessionsModalOpen] = useState(false);
+  const [saveConfirmation, setSaveConfirmation] = useState(false);
 
   const INITIAL_TEXT = `I was happy as I played the guitar. I think I was really happy I enjoyed making good music and sharing it with my friends. But at the same time, I was annoyed. I know I'm not the best guitarist, and despite my practice, I feel like I'm in a rut and not getting any better. I'm annoyed because I feel like I'm not good enough.`
 
@@ -38,17 +45,83 @@ export default function App() {
     }
   }, [])
 
+  const fetchSessions = async () => {
+    try {
+      const idToken = await user?.getIdToken();
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/sessions`, {
+        headers: {
+          'Authorization': `Bearer ${idToken}`
+        }
+      });
+      const data = await response.json();
+      setSessions(data);
+    } catch (error) {
+      console.error('Error fetching sessions:', error);
+    }
+  };
+
+  useEffect(() => {
+    const fetchSessionsOnLoad = async () => {
+      setIsLoading(true);
+      if (!user) return;
+      
+      try {
+        await fetchSessions();
+        if (sessions.length > 0 && isFirstLoad) {
+          const mostRecent = sessions[0];
+          setSessionId(mostRecent.id);
+          setUserInput(mostRecent.prompt);
+          setSummary(mostRecent.summary);
+          setTranslation(mostRecent.translation);
+          setSelectedLanguage(mostRecent.language as Language);
+          setUserRecordedAudioData(mostRecent.recording || '');
+          setTranslatedAudioData(mostRecent.tts_audio || '');
+          setIsFirstLoad(false);
+        }
+      } catch (error) {
+        console.error('Error fetching sessions:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchSessionsOnLoad();
+  }, [user]);
+
+  useEffect(() => {
+    if (!userRecordedAudioData) return;
+
+    const audioContainer = document.getElementById('audio-container');
+    if (!audioContainer) return;
+
+    // Clear existing audio elements
+    audioContainer.innerHTML = '';
+
+    // Create and append new audio element
+    const audio = document.createElement('audio');
+    // Ensure the base64 data is properly formatted as a data URL
+    audio.src = userRecordedAudioData.startsWith('data:') 
+      ? userRecordedAudioData
+      : `data:audio/wav;base64,${userRecordedAudioData}`;
+    audio.controls = true;
+    audioContainer.appendChild(audio);
+  }, [userRecordedAudioData]);
+
   const handleLanguageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setSelectedLanguage(e.target.value as Language)
   }
 
   const addAudioElement = (blob: Blob) => {
-    const url = URL.createObjectURL(blob)
-    setUserRecordedAudioData(url)
-    const audio = document.createElement('audio')
-    audio.src = url
-    audio.controls = true
-    document.getElementById('audio-container')?.appendChild(audio)
+    const reader = new FileReader();
+    reader.readAsDataURL(blob);
+    reader.onloadend = () => {
+      const base64Audio = reader.result as string;
+      setUserRecordedAudioData(base64Audio);
+      const audio = document.createElement('audio');
+      audio.src = URL.createObjectURL(blob);
+      audio.controls = true;
+      document.getElementById('audio-container')?.appendChild(audio);
+    };
   }
 
   const handleSubmit = async () => {
@@ -76,6 +149,7 @@ export default function App() {
       setTranslation(data.translation);
       setTranslatedAudioData(data.audio);
       setSessionId(data.sessionId);
+      await fetchSessions();
     } catch (error) {
       console.error('Error submitting:', error);
     } finally {
@@ -86,6 +160,7 @@ export default function App() {
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newValue = e.target.value
     setUserInput(newValue)
+    setSessionId(null);
     
     if (newValue !== INITIAL_TEXT) {
       setSummary('')
@@ -119,9 +194,28 @@ export default function App() {
       if (!response.ok) {
         throw new Error('Failed to save recording');
       }
+
+      await fetchSessions();
+      
+      // Show checkmark for 1.5 seconds
+      setSaveConfirmation(true);
+      setTimeout(() => setSaveConfirmation(false), 1500);
     } catch (error) {
       console.error('Error saving recording:', error);
     }
+  };
+
+
+  const handleSelectSession = (session: Session) => {
+    setSessionId(session.id);
+    setUserInput(session.prompt);
+    setSummary(session.summary);
+    setTranslation(session.translation);
+    setSelectedLanguage(session.language as Language);
+    setUserRecordedAudioData(session.recording || '');
+    setTranslatedAudioData(session.tts_audio);
+    setIsSessionsModalOpen(false);
+    setIsFirstLoad(false);
   };
 
   if (loading) {
@@ -145,11 +239,18 @@ export default function App() {
           </div>
           <div className="right-section">
             <button 
-              onClick={() => setIsModalOpen(true)}
-              className="info-button"
+              onClick={() => setIsSessionsModalOpen(true)}
+              className="icon-button"
+              aria-label="Session History"
+            >
+              <HistoryIcon fontSize="small" sx={{ color: 'white' }} />
+            </button>
+            <button 
+              onClick={() => setIsInfoModalOpen(true)}
+              className="icon-button"
               aria-label="Information"
             >
-              <InfoIcon fontSize="small" />
+              <InfoIcon fontSize="small" sx={{ color: 'white' }} />
             </button>
             <button 
               onClick={() => auth.signOut()} 
@@ -161,14 +262,18 @@ export default function App() {
         </div>
       </div>
 
-      <Modal 
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        title="Information"
-      >
-        {/* Add your modal content here */}
-        <p>Your information text will go here.</p>
-      </Modal>
+      <InfoModal 
+        isOpen={isInfoModalOpen}
+        onClose={() => setIsInfoModalOpen(false)}
+      />
+
+      <SessionsModal 
+        isOpen={isSessionsModalOpen}
+        onClose={() => setIsSessionsModalOpen(false)}
+        sessions={sessions}
+        onSelectSession={handleSelectSession}
+        currentSessionId={sessionId}
+      />
 
       <div className="app-container">
         {/* Left Section */}
@@ -253,7 +358,7 @@ export default function App() {
                           className="audio-button"
                           aria-label="Save Recording"
                         >
-                          <SaveIcon />
+                          {saveConfirmation ? <CheckIcon /> : <SaveIcon />}
                         </button>
                       )}
                       <div id="audio-container" />

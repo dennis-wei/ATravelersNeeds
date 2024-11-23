@@ -418,6 +418,21 @@ files = [
 Flask = ">=0.9"
 
 [[package]]
+name = "flask-sqlalchemy"
+version = "3.1.1"
+description = "Add SQLAlchemy support to your Flask application."
+optional = false
+python-versions = ">=3.8"
+files = [
+    {file = "flask_sqlalchemy-3.1.1-py3-none-any.whl", hash = "sha256:4ba4be7f419dc72f4efd8802d69974803c37259dd42f3913b0dcf75c9447e0a0"},
+    {file = "flask_sqlalchemy-3.1.1.tar.gz", hash = "sha256:e4b68bb881802dda1a7d878b2fc84c06d1ee57fb40b874d3dc97dabfa36b8312"},
+]
+
+[package.dependencies]
+flask = ">=2.2.5"
+sqlalchemy = ">=2.0.16"
+
+[[package]]
 name = "google-api-core"
 version = "2.23.0"
 description = "Google API client core library"
@@ -1716,4 +1731,4 @@ watchdog = ["watchdog (>=2.3)"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
-content-hash = "7ba6a586cf26e4af440ec22841ec19c6ebc2ac5506c682fbba1faf005bb12a4c"
+content-hash = "cc932756d0a90b000d4d8c6a242f51f20da4c3c501e25efc400e61b432757d9b"

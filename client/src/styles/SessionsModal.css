@@ -1,0 +1,53 @@
+.sessions-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.session-row {
+  color: #1f2937;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.session-row:hover {
+  background-color: #f3f4f6;
+}
+
+.session-row td {
+  padding: 0.5rem 1rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.sessions-table th {
+  color: #1f2937;
+  text-align: left;
+  padding: 0.5rem 1rem;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.session-audio-button {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: #4f46e5;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  transition: background-color 0.2s ease;
+}
+
+.session-audio-button:hover {
+  background-color: #4338ca;
+}
+
+.session-row-active {
+  background-color: #136F63;
+  color: white;
+}
+
+.session-row-active:hover {
+  background-color: #0f5a51;
+}

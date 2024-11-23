@@ -1,26 +1,40 @@
 from flask import Flask, request, jsonify
 from functools import wraps
-from firebase_admin import auth, credentials
+from firebase_admin import auth, credentials, initialize_app
 import json
 from openai import OpenAI
 import base64
 import os
 from flask_cors import CORS
 import uuid
+from db.session_db import db, DatabaseManager, Session
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Initialize Firebase with credentials from .env
-# firebase = initialize_app(cred)
-# auth = firebase.auth()
+cred = credentials.Certificate('firebase_credentials.json')
+firebase = initialize_app(cred)
 
-app = Flask(__name__)
-CORS(app, resources={
-    r"/*": {
-        "origins": [
-            "http://localhost:5173",
-            "http://localhost:5174"
-        ]
-    }
-})
+def create_app():
+    app = Flask(__name__)
+    CORS(app, resources={
+        r"/*": {
+            "origins": [
+                "http://localhost:5173",
+                "http://localhost:5174"
+            ],
+            "allow_headers": ["Content-Type", "Authorization"]
+        }
+    })
+    
+    # Configure database
+    app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')
+    db.init_app(app)
+    
+    return app
+
+app = create_app()
 
 def require_firebase_token(f):
     @wraps(f)
@@ -29,14 +43,28 @@ def require_firebase_token(f):
         if not auth_header or not auth_header.startswith('Bearer '):
             return jsonify({'error': 'Invalid authorization header'}), 401
         
-        # token = auth_header.split('Bearer ')[1]
+        token = auth_header.split('Bearer ')[1]
+        try:
+            decoded_token = auth.verify_id_token(token)
+            user = auth.get_user(decoded_token['uid'])
+            if not user:
+                return jsonify({'error': 'Invalid user'}), 401
+            kwargs['user'] = user
+        except Exception as e:
+            return jsonify({'error': 'Invalid token', 'details': str(e)}), 401
         return f(*args, **kwargs)
             
     return decorated_function
 
+@app.route('/api/sessions', methods=['GET'])
+@require_firebase_token
+def get_sessions(user):
+    sessions = DatabaseManager.get_user_sessions(user.uid)
+    return jsonify([session.to_dict() for session in sessions])
+
 @app.route('/api/submit', methods=['POST'])
 @require_firebase_token
-def submit():
+def submit(user):
     data = request.get_json()
     prompt = data.get('text')
     language = data.get('language')
@@ -78,14 +106,23 @@ def submit():
                 response_format="mp3"
             )
 
-            # Generate session ID before returning response
-            session_id = str(uuid.uuid4())
+            session = Session(
+                id=str(uuid.uuid4()),
+                user_id=user.uid,
+                prompt=prompt,
+                language=language,
+                summary=completion_json['summary'],
+                translation=completion_json['translation'],
+                tts_audio=speech_response.content
+            )
+            
+            DatabaseManager.create_session(session)
 
             return jsonify({
-                'summary': completion_json['summary'],
-                'translation': completion_json['translation'],
-                'audio': base64.b64encode(speech_response.content).decode('utf-8'),
-                'sessionId': session_id
+                'summary': session.summary,
+                'translation': session.translation,
+                'audio': base64.b64encode(session.tts_audio).decode('utf-8'),
+                'sessionId': session.id
             })
 
         except json.JSONDecodeError:
@@ -96,17 +133,33 @@ def submit():
 
 @app.route('/api/saveRecording/session/<session_id>', methods=['POST'])
 @require_firebase_token
-def save_recording(session_id):
+def save_recording(session_id, user):
     data = request.get_json()
     audio_data = data.get('audioData')
     
     if not session_id or not audio_data:
         return jsonify({'error': 'Missing sessionId or audioData'}), 400
-        
-    # TODO: Implement storage logic here
-    print(f"Received recording for session {session_id}")
     
-    return jsonify({'success': True})
+    try:
+        # Handle both raw binary and data URL formats
+        if ',' in audio_data:
+            # Data URL format
+            audio_binary = base64.b64decode(audio_data.split(',')[1])
+        else:
+            # Raw base64 binary
+            audio_binary = base64.b64decode(audio_data)
+            
+        session = Session.query.filter_by(id=session_id, user_id=user.uid).first()
+        
+        if not session:
+            return jsonify({'error': 'Session not found'}), 404
+            
+        session.recording = audio_binary
+        db.session.commit()
+        
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
     app.run(debug=True)
