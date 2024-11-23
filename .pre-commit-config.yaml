@@ -1,0 +1,9 @@
+repos:
+  - repo: local
+    hooks:
+      - id: poetry-export
+        name: Poetry export
+        entry: cd server && poetry export -f requirements.txt --output requirements.txt --without-hashes
+        language: system
+        pass_filenames: false
+        always_run: true
