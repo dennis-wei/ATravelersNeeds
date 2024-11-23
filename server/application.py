@@ -9,6 +9,7 @@ from flask_cors import CORS
 import uuid
 from db.session_db import db, DatabaseManager, Session
 from dotenv import load_dotenv
+import datetime
 
 load_dotenv()
 
@@ -160,6 +161,13 @@ def save_recording(session_id, user):
         return jsonify({'success': True})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+@application.route('/health', methods=['GET'])
+def health_check():
+    return jsonify({
+        'status': 'healthy',
+        'timestamp': datetime.datetime.utcnow().isoformat()
+    }), 200
 
 if __name__ == '__main__':
     application.run(debug=True)
