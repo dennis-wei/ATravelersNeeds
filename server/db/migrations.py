@@ -4,7 +4,7 @@ def init_db():
     db.create_all()
 
 if __name__ == '__main__':
-    from app import app
-    with app.app_context():
+    from server.application import application
+    with application.app_context():
         init_db()
         print('Database initialized!')

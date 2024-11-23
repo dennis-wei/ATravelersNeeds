@@ -34,7 +34,7 @@ def create_app():
     
     return app
 
-app = create_app()
+application = create_app()
 
 def require_firebase_token(f):
     @wraps(f)
@@ -56,13 +56,13 @@ def require_firebase_token(f):
             
     return decorated_function
 
-@app.route('/api/sessions', methods=['GET'])
+@application.route('/api/sessions', methods=['GET'])
 @require_firebase_token
 def get_sessions(user):
     sessions = DatabaseManager.get_user_sessions(user.uid)
     return jsonify([session.to_dict() for session in sessions])
 
-@app.route('/api/submit', methods=['POST'])
+@application.route('/api/submit', methods=['POST'])
 @require_firebase_token
 def submit(user):
     data = request.get_json()
@@ -131,7 +131,7 @@ def submit(user):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@app.route('/api/saveRecording/session/<session_id>', methods=['POST'])
+@application.route('/api/saveRecording/session/<session_id>', methods=['POST'])
 @require_firebase_token
 def save_recording(session_id, user):
     data = request.get_json()
@@ -162,4 +162,4 @@ def save_recording(session_id, user):
         return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    application.run(debug=True)
