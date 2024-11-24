@@ -45,31 +45,24 @@ export default function App() {
     }
   }, [])
 
-  const fetchSessions = async () => {
-    try {
-      const idToken = await user?.getIdToken();
-      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/sessions`, {
-        headers: {
-          'Authorization': `Bearer ${idToken}`
-        },
-        credentials: 'include',
-      });
-      const data = await response.json();
-      setSessions(data);
-    } catch (error) {
-      console.error('Error fetching sessions:', error);
-    }
-  };
-
   useEffect(() => {
     const fetchSessionsOnLoad = async () => {
       setIsLoading(true);
       if (!user) return;
       
       try {
-        await fetchSessions();
-        if (sessions.length > 0 && isFirstLoad) {
-          const mostRecent = sessions[0];
+        const idToken = await user?.getIdToken();
+        const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/sessions`, {
+          headers: {
+            'Authorization': `Bearer ${idToken}`
+          },
+          credentials: 'include',
+        });
+        const fetchedSessions = await response.json();
+        setSessions(fetchedSessions);
+        
+        if (fetchedSessions.length > 0 && isFirstLoad) {
+          const mostRecent = fetchedSessions[0];
           setSessionId(mostRecent.id);
           setUserInput(mostRecent.prompt);
           setSummary(mostRecent.summary);

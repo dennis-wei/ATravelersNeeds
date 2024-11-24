@@ -9,17 +9,16 @@ HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
 # Add environment variables
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
+ENV FLASK_APP=application.py
 
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
+# Make the startup script executable
+RUN chmod +x start.sh
+
 EXPOSE 8000
 
-CMD ["gunicorn", "--bind", "0.0.0.0:8000", \
-     "--workers", "3", \
-     "--timeout", "60", \
-     "--access-logfile", "-", \
-     "--error-logfile", "-", \
-     "application:application"]
+CMD ["./start.sh"]

@@ -20,17 +20,19 @@ firebase = initialize_app(cred)
 
 def create_app():
     app = Flask(__name__)
-    CORS(app, resources={
-        r"/*": {
-            "origins": [
-                "http://localhost:5173",
-                "http://localhost:5174",
-                "https://travelers-needs.denniswei.dev",
-                "https://a-travelers-needs.netlify.app"
-            ],
-            "allow_headers": ["Content-Type", "Authorization"]
-        }
-    })
+    
+    CORS(
+        app,
+        origins=[
+            "http://localhost:5173",
+            "http://localhost:5174",
+            "https://travelers-needs.denniswei.dev",
+            "https://a-travelers-needs.netlify.app"
+        ],
+        supports_credentials=True,
+        allow_headers=["Content-Type", "Authorization"],
+        methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+    )
     
     # Configure database
     app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')
