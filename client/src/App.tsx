@@ -173,6 +173,7 @@ export default function App() {
 
   const handleSaveRecording = async () => {
     try {
+      setSaveConfirmation(false);
       const idToken = await user?.getIdToken();
       const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/saveRecording/session/${sessionId}`, {
         method: 'POST',
@@ -192,11 +193,15 @@ export default function App() {
 
       await fetchSessions();
       
-      // Show checkmark for 1.5 seconds
       setSaveConfirmation(true);
-      setTimeout(() => setSaveConfirmation(false), 1500);
+      const timer = setTimeout(() => {
+        setSaveConfirmation(false);
+      }, 1500);
+
+      return () => clearTimeout(timer);
     } catch (error) {
       console.error('Error saving recording:', error);
+      setSaveConfirmation(false);
     }
   };
 
@@ -211,6 +216,29 @@ export default function App() {
     setTranslatedAudioData(session.tts_audio);
     setIsSessionsModalOpen(false);
     setIsFirstLoad(false);
+  };
+
+  const fetchSessions = async () => {
+    if (!user) return;
+    
+    try {
+      const idToken = await user.getIdToken();
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/sessions`, {
+        headers: {
+          'Authorization': `Bearer ${idToken}`
+        },
+        credentials: 'include',
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch sessions');
+      }
+      
+      const fetchedSessions = await response.json();
+      setSessions(fetchedSessions);
+    } catch (error) {
+      console.error('Error fetching sessions:', error);
+    }
   };
 
   if (loading) {
@@ -352,8 +380,13 @@ export default function App() {
                           onClick={handleSaveRecording}
                           className="audio-button"
                           aria-label="Save Recording"
+                          disabled={saveConfirmation}
                         >
-                          {saveConfirmation ? <CheckIcon /> : <SaveIcon />}
+                          {saveConfirmation ? (
+                            <CheckIcon sx={{ color: 'green' }} />
+                          ) : (
+                            <SaveIcon />
+                          )}
                         </button>
                       )}
                       <div id="audio-container" />

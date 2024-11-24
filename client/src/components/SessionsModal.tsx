@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { Modal } from './Modal';
 import { Session } from '../types/session';
 import { format } from 'date-fns';
@@ -13,17 +14,46 @@ interface SessionsModalProps {
 }
 
 export function SessionsModal({ isOpen, onClose, sessions, onSelectSession, currentSessionId }: SessionsModalProps) {
-  const playRecording = (recordingData: string | null) => {
-    if (!recordingData) return;
-    const audio = new Audio();
-    audio.src = recordingData.startsWith('data:') 
-      ? recordingData 
-      : `data:audio/wav;base64,${recordingData}`;
+  const [currentAudio, setCurrentAudio] = useState<HTMLAudioElement | null>(null);
+
+  // Stop any playing audio
+  const stopCurrentAudio = () => {
+    if (currentAudio) {
+      currentAudio.pause();
+      currentAudio.currentTime = 0;
+      setCurrentAudio(null);
+    }
+  };
+
+  // Stop audio when modal closes
+  useEffect(() => {
+    if (!isOpen) {
+      stopCurrentAudio();
+    }
+  }, [isOpen]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      stopCurrentAudio();
+    };
+  }, []);
+
+  const handlePlayAudio = (audioData: string | null) => {
+    if (!audioData) return;
+    stopCurrentAudio(); // Stop any currently playing audio
+    const audio = new Audio(`data:audio/mp3;base64,${audioData}`);
+    setCurrentAudio(audio);
     audio.play();
   };
 
+  const handleClose = () => {
+    stopCurrentAudio();
+    onClose();
+  };
+
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Previous Sessions">
+    <Modal isOpen={isOpen} onClose={handleClose} title="Previous Sessions">
       <div className="sessions-table">
         <table>
           <thead>
@@ -47,7 +77,7 @@ export function SessionsModal({ isOpen, onClose, sessions, onSelectSession, curr
                     {session.recording && (
                       <button 
                         className="session-audio-button"
-                        onClick={() => playRecording(session.recording)}
+                        onClick={() => handlePlayAudio(session.recording)}
                         aria-label="Play recording"
                       >
                         <VolumeUpIcon />
