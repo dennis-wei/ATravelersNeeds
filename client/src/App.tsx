@@ -51,7 +51,8 @@ export default function App() {
       const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/sessions`, {
         headers: {
           'Authorization': `Bearer ${idToken}`
-        }
+        },
+        credentials: 'include',
       });
       const data = await response.json();
       setSessions(data);
@@ -186,6 +187,7 @@ export default function App() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${idToken}`
         },
+        credentials: 'include',
         body: JSON.stringify({
           audioData: userRecordedAudioData
         })

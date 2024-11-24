@@ -1,4 +1,5 @@
 from flask import Flask, request, jsonify
+from flask_migrate import Migrate
 from functools import wraps
 from firebase_admin import auth, credentials, initialize_app
 import json
@@ -23,7 +24,9 @@ def create_app():
         r"/*": {
             "origins": [
                 "http://localhost:5173",
-                "http://localhost:5174"
+                "http://localhost:5174",
+                "https://travelers-needs.denniswei.dev",
+                "https://a-travelers-needs.netlify.app"
             ],
             "allow_headers": ["Content-Type", "Authorization"]
         }
@@ -32,6 +35,8 @@ def create_app():
     # Configure database
     app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')
     db.init_app(app)
+
+    Migrate(app, db)
     
     return app
 
