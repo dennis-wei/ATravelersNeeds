@@ -1,6 +1,6 @@
 FROM --platform=linux/amd64 python:3.12-slim
 
-WORKDIR /app
+WORKDIR /app/server
 
 # Add healthcheck
 HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
@@ -21,4 +21,6 @@ RUN chmod +x start.sh
 
 EXPOSE 8000
 
-CMD ["./start.sh"]
+ENV PYTHONPATH=/app
+
+ENTRYPOINT ["./start.sh"]

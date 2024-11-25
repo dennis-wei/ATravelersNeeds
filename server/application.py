@@ -1,22 +1,26 @@
 from flask import Flask, request, jsonify
-from flask_migrate import Migrate
 from functools import wraps
 from firebase_admin import auth, credentials, initialize_app
 import json
 from openai import OpenAI
-import base64
 import os
 from flask_cors import CORS
 import uuid
-from db.session_db import db, DatabaseManager, Session
+from server.db.firebase_db import FirebaseManager
+from server.db.session import Session
 from dotenv import load_dotenv
 import datetime
+import time
 
 load_dotenv()
 
-# Initialize Firebase with credentials from .env
 cred = credentials.Certificate('firebase_credentials.json')
-firebase = initialize_app(cred)
+firebase = initialize_app(cred, {
+    'storageBucket': os.getenv('FIREBASE_STORAGE_BUCKET')
+})
+
+# Initialize the Firebase manager
+firebase_manager = FirebaseManager()
 
 def create_app():
     app = Flask(__name__)
@@ -33,12 +37,6 @@ def create_app():
         allow_headers=["Content-Type", "Authorization"],
         methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"]
     )
-    
-    # Configure database
-    app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')
-    db.init_app(app)
-
-    Migrate(app, db)
     
     return app
 
@@ -67,8 +65,8 @@ def require_firebase_token(f):
 @application.route('/api/sessions', methods=['GET'])
 @require_firebase_token
 def get_sessions(user):
-    sessions = DatabaseManager.get_user_sessions(user.uid)
-    return jsonify([session.to_dict() for session in sessions])
+    sessions = firebase_manager.get_user_sessions(user.uid)
+    return jsonify(sessions)
 
 @application.route('/api/submit', methods=['POST'])
 @require_firebase_token
@@ -98,9 +96,6 @@ def submit(user):
             messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": prompt}]
         )
 
-        print(completion.choices[0].message.content)
-
-        # Parse and validate completion response
         try:
             completion_json = json.loads(completion.choices[0].message.content.replace("```json", "").replace("```", ""))
             if not all(key in completion_json for key in ['summary', 'translation']):
@@ -121,15 +116,16 @@ def submit(user):
                 language=language,
                 summary=completion_json['summary'],
                 translation=completion_json['translation'],
-                tts_audio=speech_response.content
+                created_at=time.time()
             )
             
-            DatabaseManager.create_session(session)
-
+            # Create session with audio data
+            session = firebase_manager.create_session(session, speech_response)
+            
             return jsonify({
                 'summary': session.summary,
                 'translation': session.translation,
-                'audio': base64.b64encode(session.tts_audio).decode('utf-8'),
+                'audio': session.tts_audio,  # Now sending base64 string directly
                 'sessionId': session.id
             })
 
@@ -149,22 +145,7 @@ def save_recording(session_id, user):
         return jsonify({'error': 'Missing sessionId or audioData'}), 400
     
     try:
-        # Handle both raw binary and data URL formats
-        if ',' in audio_data:
-            # Data URL format
-            audio_binary = base64.b64decode(audio_data.split(',')[1])
-        else:
-            # Raw base64 binary
-            audio_binary = base64.b64decode(audio_data)
-            
-        session = Session.query.filter_by(id=session_id, user_id=user.uid).first()
-        
-        if not session:
-            return jsonify({'error': 'Session not found'}), 404
-            
-        session.recording = audio_binary
-        db.session.commit()
-        
+        firebase_manager.save_recording(session_id, user.uid, audio_data)
         return jsonify({'success': True})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -177,4 +158,4 @@ def health_check():
     }), 200
 
 if __name__ == '__main__':
-    application.run(host='0.0.0.0', port=8000)
+    application.run(debug=True, host='0.0.0.0', port=5000)

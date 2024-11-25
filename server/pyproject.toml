@@ -11,12 +11,9 @@ Flask = "^3.1.0"
 Flask-Cors = "^5.0.0"
 python-dotenv = "^1.0.1"
 firebase-admin = "^6.6.0"
-sqlalchemy = "^2.0.36"
-psycopg2-binary = "^2.9.10"
 openai = "^1.55.0"
-flask-sqlalchemy = "^3.1.1"
 gunicorn = "^23.0.0"
-flask-migrate = "^4.0.7"
+boto3 = "^1.35.68"
 
 [build-system]
 requires = ["poetry-core"]
