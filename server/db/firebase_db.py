@@ -22,7 +22,6 @@ class SessionFirebase():
     recording_chunks: Optional[int] = None
 
     def to_session(self) -> Session:
-        print("keys: ", asdict(self).keys())
         return Session(
             id=self.id,
             user_id=self.user_id,
@@ -71,7 +70,6 @@ class FirebaseManager:
                 session_data['updated_at'] = updated_at.timestamp()
                 
             session_firebase_data = SessionFirebase.from_dict(session_data)
-            print("74 session_firebase_data", session_firebase_data)
             session = session_firebase_data.to_session()
             
             if session_firebase_data.tts_audio_chunks:
